@@ -1,0 +1,57 @@
+<!-- index.html -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MazeRun — Mouse Trail Edition</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <h1>MazeRun — Mouse Trail Edition</h1>
+    
+    <!-- Game Mode Toggle -->
+    <div class="mode-controls">
+      <button id="modeToggle">Level Mode</button>
+    </div>
+    
+    <!-- Classic Mode Controls -->
+    <div class="controls" id="classicControls">
+      <div class="small info">Press <strong>Space</strong> to start</div>
+      <select id="layoutSelect">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+      <button id="resetBtn">Reset</button>
+    </div>
+
+    <!-- Level Progression Controls -->
+    <div class="controls level-controls" id="levelControls" style="display: none;">
+      <div class="small info">Press <strong>Space</strong> to start</div>
+      <div class="level-nav">
+        <button id="prevLevelBtn">◀ Previous</button>
+        <div id="levelInfo" class="level-info">EASY 1/5: First Steps</div>
+        <button id="nextLevelBtn">Next ▶</button>
+      </div>
+      <button id="resetBtn2">Reset Level</button>
+    </div>
+
+    <div class="maze-wrap overlay" id="overlay">
+      <div id="maze" class="maze" tabindex="0" aria-label="Maze" ></div>
+      <div id="message" class="message" style="display:none"></div>
+    </div>
+
+    <div class="hud">
+      <div>Time: <span id="timer">0.000</span>s</div>
+      <div class="small">Trail length: <span id="trailLen">0</span></div>
+    </div>
+
+    <footer class="small">Move cursor to <strong>START</strong>, press <strong>Space</strong> to begin. Keep mouse inside the path from <strong>Start</strong> ➜ <strong>Exit</strong>. Touch a wall → Game Over.</footer>
+  </div>
+
+  <script src="levels.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
