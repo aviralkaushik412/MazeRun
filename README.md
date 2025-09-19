@@ -1,2 +1,2 @@
 # MazeRun
-simple yet challenging web-based maze game
+simple yet challenging web-based maze game coming soon
