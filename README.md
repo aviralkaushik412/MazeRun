@@ -1,2 +1,2 @@
 # MazeRun
-simple yet challenging web-based maze game coming soon
+Interactive Maze Pathfinding Visualizer Using BFS/DFS coming soon
