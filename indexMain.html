@@ -1,57 +1,127 @@
-<!-- index.html -->
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>MazeRun — Mouse Trail Edition</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MazeRun - Pathfinding Visualizer</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="app">
-    <h1>MazeRun — Mouse Trail Edition</h1>
-    
-    <!-- Game Mode  Toggle -->
-    <div class="mode-controls">
-      <button id="modeToggle">Level Mode</button>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <span class="logo">🏃‍♂️</span>
+      <h1 class="brand-name">MazeRun</h1>
     </div>
-    
-    <!-- Classic Mode Controls -->
-    <div class="controls" id="classicControls">
-      <div class="small info">Press <strong>Space</strong> to start</div>
-      <select id="layoutSelect">
-        <option value="easy">Easy</option>
-        <option value="medium" selected>Medium</option>
-        <option value="hard">Hard</option>
-      </select>
-      <button id="resetBtn">Reset</button>
+    <div class="navbar-toggle" id="navbarToggle">
+      <span></span>
+      <span></span>
+      <span></span>
     </div>
+  </nav>
 
-    <!-- Level Progression Controls -->
-    <div class="controls level-controls" id="levelControls" style="display: none;">
-      <div class="small info">Press <strong>Space</strong> to start</div>
-      <div class="level-nav">
-        <button id="prevLevelBtn">◀ Previous</button>
-        <div id="levelInfo" class="level-info">EASY 1/5: First Steps</div>
-        <button id="nextLevelBtn">Next ▶</button>
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h3>🎯 Algorithm Selection</h3>
+    </div>
+    
+    <div class="sidebar-section">
+      <h4>Search Algorithms</h4>
+      <div class="algorithm-options">
+        <label class="radio-option">
+          <input type="radio" name="algorithm" value="bfs" checked>
+          <span class="radio-custom"></span>
+          <span class="option-text">
+            <strong>BFS</strong> - Breadth First Search
+            <small>Guarantees shortest path</small>
+          </span>
+        </label>
+        
+        <label class="radio-option">
+          <input type="radio" name="algorithm" value="dfs">
+          <span class="radio-custom"></span>
+          <span class="option-text">
+            <strong>DFS</strong> - Depth First Search
+            <small>Explores deeper paths first</small>
+          </span>
+        </label>
       </div>
-      <button id="resetBtn2">Reset Level</button>
     </div>
 
-    <div class="maze-wrap overlay" id="overlay">
-      <div id="maze" class="maze" tabindex="0" aria-label="Maze" ></div>
-      <div id="message" class="message" style="display:none"></div>
+    <div class="sidebar-section">
+      <h4>Graph Type</h4>
+      <div class="graph-options">
+        <label class="radio-option">
+          <input type="radio" name="graphType" value="unweighted" checked>
+          <span class="radio-custom"></span>
+          <span class="option-text">
+            <strong>Unweighted</strong>
+            <small>All paths have equal cost</small>
+          </span>
+        </label>
+        
+        <label class="radio-option">
+          <input type="radio" name="graphType" value="weighted">
+          <span class="radio-custom"></span>
+          <span class="option-text">
+            <strong>Weighted</strong>
+            <small>Paths have different costs</small>
+          </span>
+        </label>
+      </div>
+      
+      <div class="weight-controls" id="weightControls" style="display: none;">
+        <button id="randomizeWeights" class="weight-btn">🎲 Randomize Weights</button>
+        <div class="weight-legend">
+          <small>
+            <strong>Legend:</strong><br>
+            Numbers show cell costs<br>
+            1 = Lowest Cost, 5 = Highest Cost
+          </small>
+        </div>
+      </div>
     </div>
 
-    <div class="hud">
-      <div>Time: <span id="timer">0.000</span>s</div>
-      <div class="small">Trail length: <span id="trailLen">0</span></div>
+    <div class="sidebar-section">
+      <h4>Visualization Speed</h4>
+      <div class="speed-control">
+        <input type="range" id="speedSlider" min="10" max="200" value="60" class="slider">
+        <div class="speed-labels">
+          <span>Fast</span>
+          <span>Slow</span>
+        </div>
+      </div>
     </div>
+  </aside>
 
-    <footer class="small">Move cursor to <strong>START</strong>, press <strong>Space</strong> to begin. Keep mouse inside the path from <strong>Start</strong> ➜ <strong>Exit</strong>. Touch a wall → Game Over.</footer>
-  </div>
+  <!-- Main Content -->
+  <main class="main-content" id="mainContent">
+    <div class="container">
+      <div class="page-header">
+        <h2 id="algorithmTitle">🔍 BFS Pathfinding Visualizer</h2>
+        <p class="subtitle">Visualize how different algorithms find paths through mazes</p>
+      </div>
 
-  <script src="levels.js"></script>
+      <div id="controls">
+        <button id="createGrid">🏗️ Create Grid</button>
+        <button id="setStart">🏁 Set Start</button>
+        <button id="setEnd">🎯 Set End</button>
+        <button id="runAlgorithm">🚀 Run Algorithm</button>
+        <button id="reset">🔄 Reset</button>
+      </div>
+
+      <div class="grid-container">
+        <div id="grid"></div>
+      </div>
+
+      <div class="info-panel">
+        <div id="queueDisplay">Click "Create Grid" to start visualizing pathfinding algorithms!</div>
+        <div id="result"></div>
+      </div>
+    </div>
+  </main>
+
   <script src="script.js"></script>
 </body>
 </html>

@@ -1,307 +1,472 @@
-// MazeRun-script.js - Enhanced with level progression system
+let rows, cols;
+let maze = [];
+let start = null, end = null;
+let mode = "";
+let currentAlgorithm = "bfs";
+let currentGraphType = "unweighted";
+let animationSpeed = 60;
 
-// Legacy layouts for backward compatibility
-const LAYOUTS = {
-  easy: MAZE_LEVELS.easy[1].layout,    // Use Easy Level 2 as default easy
-  medium: MAZE_LEVELS.medium[0].layout, // Use Medium Level 1 as default medium  
-  hard: MAZE_LEVELS.hard[0].layout     // Use Hard Level 1 as default hard
-};
+const gridDiv = document.getElementById("grid");
+const queueDiv = document.getElementById("queueDisplay");
+const resultDiv = document.getElementById("result");
+const algorithmTitle = document.getElementById("algorithmTitle");
+const sidebar = document.getElementById("sidebar");
+const mainContent = document.getElementById("mainContent");
+const navbarToggle = document.getElementById("navbarToggle");
 
-const mazeEl = document.getElementById('maze');
-const layoutSelect = document.getElementById('layoutSelect');
-const resetBtn = document.getElementById('resetBtn');
-const messageEl = document.getElementById('message');
-const timerEl = document.getElementById('timer');
-const trailLenEl = document.getElementById('trailLen');
-const levelInfoEl = document.getElementById('levelInfo');
-const nextLevelBtn = document.getElementById('nextLevelBtn');
-const prevLevelBtn = document.getElementById('prevLevelBtn');
+// Event Listeners
+document.getElementById("createGrid").onclick = createGrid;
+document.getElementById("setStart").onclick = () => (mode = "start");
+document.getElementById("setEnd").onclick = () => (mode = "end");
+document.getElementById("runAlgorithm").onclick = runSelectedAlgorithm;
+document.getElementById("reset").onclick = resetGrid;
 
-let grid=[], rows=0, cols=0;
-let running=false, started=false;
-let startCell=null, exitCell=null;
-let visited=[], visitedSet=new Set();
-let startTime=0, rafTimer=null;
-let lastPointer=null;
-let gameMode = 'classic'; // 'classic' or 'progression'
-let hasMovedFromStart = false; // Flag to prevent immediate win
-let currentMouseX = 0, currentMouseY = 0; // Track mouse position
+// Sidebar toggle for mobile
+navbarToggle.onclick = toggleSidebar;
 
-function buildMaze(layoutName){
-  let layout;
-  
-  if (gameMode === 'progression') {
-    const currentLevel = LevelManager.getCurrentLevel();
-    if (currentLevel) {
-      layout = currentLevel.layout;
-      updateLevelInfo();
-    } else {
-      // Fallback to classic mode
-      layout = LAYOUTS[layoutName];
-    }
+// Algorithm selection
+document.querySelectorAll('input[name="algorithm"]').forEach(radio => {
+  radio.addEventListener('change', (e) => {
+    currentAlgorithm = e.target.value;
+    updateAlgorithmTitle();
+  });
+});
+
+// Graph type selection
+document.querySelectorAll('input[name="graphType"]').forEach(radio => {
+  radio.addEventListener('change', (e) => {
+    currentGraphType = e.target.value;
+    toggleWeightControls();
+    updateGridDisplay();
+  });
+});
+
+// Speed control
+document.getElementById("speedSlider").addEventListener('input', (e) => {
+  animationSpeed = parseInt(e.target.value);
+});
+
+// Randomize weights button
+document.getElementById("randomizeWeights").addEventListener('click', randomizeWeights);
+
+function toggleWeightControls() {
+  const weightControls = document.getElementById("weightControls");
+  if (currentGraphType === "weighted") {
+    weightControls.style.display = "block";
   } else {
-    // Classic mode - use old system
-    layout = LAYOUTS[layoutName];
+    weightControls.style.display = "none";
   }
-
-  if (!layout) return;
-  
-  rows=layout.length; cols=layout[0].length;
-  mazeEl.style.gridTemplateRows=`repeat(${rows}, var(--cell))`;
-  mazeEl.style.gridTemplateColumns=`repeat(${cols}, var(--cell))`;
-  mazeEl.innerHTML=''; grid=[]; startCell=null; exitCell=null;
-
-  for(let r=0;r<rows;r++){
-    grid[r]=[];
-    for(let c=0;c<cols;c++){
-      const ch=layout[r][c];
-      const el=document.createElement('div');
-      el.classList.add('cell'); el.dataset.r=r; el.dataset.c=c;
-      if(ch==='#') el.classList.add('wall');
-      else if(ch==='.') el.classList.add('path');
-      else if(ch==='S'){ el.classList.add('start'); el.dataset.start='1'; startCell=el;}
-      else if(ch==='E'){ el.classList.add('exit'); el.dataset.exit='1'; exitCell=el;}
-      mazeEl.appendChild(el); grid[r][c]=el;
-    }
-  }
-  resetState();
 }
 
-function resetState(){
-  running=false; started=false;
-  visited=[]; visitedSet=new Set(); lastPointer=null;
-  startTime=0; cancelAnimationFrame(rafTimer);
-  timerEl.textContent='0.000'; trailLenEl.textContent='0';
-  messageEl.style.display='none';
-  hasMovedFromStart = false; // Reset the movement flag
-  document.querySelectorAll('.cell').forEach(el=>el.classList.remove('visited'));
-}
-
-function showMessage(text){ messageEl.textContent=text; messageEl.style.display='flex'; }
-function hideMessage(){ messageEl.style.display='none'; }
-
-function startGame(){
-  if(!startCell || !exitCell) return;
-  
-  // Check if mouse cursor is on the start cell before starting
-  const elementUnderMouse = document.elementFromPoint(currentMouseX, currentMouseY)?.closest('.cell');
-  
-  // Only start if cursor is on the start cell
-  if(!elementUnderMouse || !elementUnderMouse.dataset.start) {
-    showMessage('Move cursor to START to begin!');
-    setTimeout(hideMessage, 1500);
+function randomizeWeights() {
+  if (maze.length === 0) {
+    alert("Please create a grid first!");
     return;
   }
-  
-  resetState(); started=true; running=true;
-  addVisit(startCell);
-  startTime=performance.now(); tickTimer();
+
+  document.querySelectorAll('.cell:not(.wall):not(.start):not(.end)').forEach(cell => {
+    const weight = Math.floor(Math.random() * 5) + 1; // Weights 1-5
+    cell.dataset.weight = weight;
+    cell.classList.add('weighted');
+    // Remove any background styling that interferes with path colors
+    cell.style.background = '';
+    cell.style.opacity = '';
+  });
+
+  queueDiv.textContent = "🎲 Weights randomized! Numbers show cell costs (1=lowest, 5=highest).";
 }
 
-function tickTimer(){
-  if(!running) return;
-  timerEl.textContent=((performance.now()-startTime)/1000).toFixed(3);
-  rafTimer=requestAnimationFrame(tickTimer);
+function toggleSidebar() {
+  sidebar.classList.toggle('active');
+  mainContent.classList.toggle('shifted');
 }
 
-function endGame(win){
-  running=false; 
-  if (win) {
-    if (gameMode === 'progression') {
-      const nextLevel = LevelManager.getNextLevel();
-      if (nextLevel) {
-        showMessage(`Level Complete! Next: ${nextLevel.name}`);
-      } else {
-        showMessage('🎉 All Levels Complete! 🎉');
+function updateAlgorithmTitle() {
+  const algorithmNames = {
+    bfs: "🔍 BFS Pathfinding Visualizer",
+    dfs: "🌊 DFS Pathfinding Visualizer"
+  };
+  algorithmTitle.textContent = algorithmNames[currentAlgorithm];
+}
+
+function updateGridDisplay() {
+  // Update grid display based on graph type
+  if (currentGraphType === "weighted" && maze.length > 0) {
+    // Add weight indicators for weighted graphs
+    document.querySelectorAll('.cell:not(.wall):not(.start):not(.end)').forEach(cell => {
+      if (!cell.dataset.weight) {
+        const weight = Math.floor(Math.random() * 5) + 1;
+        cell.dataset.weight = weight;
+        cell.classList.add('weighted');
+        // Don't add background colors that interfere with path visualization
       }
-    } else {
-      showMessage('You Win!');
+    });
+  } else {
+    // Remove weight indicators for unweighted graphs
+    document.querySelectorAll('.cell').forEach(cell => {
+      delete cell.dataset.weight;
+      cell.style.background = '';
+      cell.style.opacity = '';
+      cell.classList.remove('weighted');
+    });
+  }
+}
+
+function getCellWeight(row, col) {
+  if (currentGraphType === "unweighted") return 1;
+  
+  const cell = document.getElementById(`cell-${row}-${col}`);
+  return parseInt(cell.dataset.weight) || 1;
+}
+
+function runSelectedAlgorithm() {
+  if (currentGraphType === "weighted") {
+    if (currentAlgorithm === "bfs") {
+      runDijkstra(); // Use Dijkstra for weighted graphs instead of BFS
+    } else if (currentAlgorithm === "dfs") {
+      runWeightedDFS();
     }
   } else {
-    showMessage('Game Over');
-  }
-  setTimeout(resetState,1200);
-}
-
-function addVisit(cell){
-  const key=`${cell.dataset.r},${cell.dataset.c}`;
-  if(visitedSet.has(key)){
-    const idx=visited.findIndex(el=>`${el.dataset.r},${el.dataset.c}`===key);
-    if(idx!==-1){ for(let i=visited.length-1;i>idx;i--){ const rem=visited.pop(); visitedSet.delete(`${rem.dataset.r},${rem.dataset.c}`); rem.classList.remove('visited');}}
-    trailLenEl.textContent=visited.length; return;
-  }
-  visited.push(cell); visitedSet.add(key); cell.classList.add('visited'); trailLenEl.textContent=visited.length;
-}
-
-function samplePathAndProcess(lastPt, cx, cy){
-  const dx=cx-lastPt.x, dy=cy-lastPt.y;
-  const dist=Math.hypot(dx,dy);
-  const steps=Math.max(1,Math.floor(dist/6));
-  for(let i=1;i<=steps;i++){
-    const t=i/steps, sx=Math.round(lastPt.x+dx*t), sy=Math.round(lastPt.y+dy*t);
-    const el=document.elementFromPoint(sx,sy)?.closest('.cell');
-    if(!el) continue;
-    if(el.classList.contains('wall')){ endGame(false); return {stop:true};}
-    
-    // Check if player has moved away from start before allowing win
-    if(el.dataset.exit && hasMovedFromStart){ 
-      addVisit(el); 
-      endGame(true); 
-      return {stop:true};
+    if (currentAlgorithm === "bfs") {
+      runBFS();
+    } else if (currentAlgorithm === "dfs") {
+      runDFS();
     }
-    
-    if(el.classList.contains('path')||el.dataset.start) {
-      addVisit(el);
-      // Mark that player has moved from start if they're not on start cell
-      if(!el.dataset.start) {
-        hasMovedFromStart = true;
+  }
+}
+
+function createGrid() {
+  gridDiv.innerHTML = "";
+  start = null; end = null;
+  resultDiv.textContent = "";
+  resultDiv.className = "";
+  queueDiv.textContent = "Grid created! Click to add walls, or set start/end points.";
+
+  const size = parseInt(prompt("Enter grid size (e.g. 15 for 15x15):"));
+  if (isNaN(size) || size <= 0) return alert("Enter a valid number!");
+
+  rows = cols = size;
+  maze = Array.from({ length: rows }, () => Array(cols).fill(0));
+
+  gridDiv.style.gridTemplateColumns = `repeat(${cols}, 24px)`;
+  gridDiv.style.gridTemplateRows = `repeat(${rows}, 24px)`;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cell = document.createElement("div");
+      cell.id = `cell-${r}-${c}`;
+      cell.className = "cell";
+      cell.addEventListener("click", () => handleCellClick(r, c));
+      gridDiv.appendChild(cell);
+    }
+  }
+
+  toggleWeightControls();
+  updateGridDisplay();
+}
+
+function handleCellClick(r, c) {
+  const cell = document.getElementById(`cell-${r}-${c}`);
+
+  if (mode === "start") {
+    if (start) document.getElementById(`cell-${start.row}-${start.col}`).classList.remove("start");
+    start = { row: r, col: c };
+    cell.classList.add("start");
+  } else if (mode === "end") {
+    if (end) document.getElementById(`cell-${end.row}-${end.col}`).classList.remove("end");
+    end = { row: r, col: c };
+    cell.classList.add("end");
+  } else {
+    maze[r][c] = maze[r][c] === 0 ? 1 : 0;
+    cell.classList.toggle("wall");
+  }
+}
+
+async function runBFS() {
+  if (!start || !end) {
+    resultDiv.textContent = "⚠️ Please select both Start and End points!";
+    resultDiv.className = "error";
+    return;
+  }
+
+  // Reset previous results
+  resultDiv.textContent = "";
+  resultDiv.className = "";
+
+  const visited = Array.from({ length: rows }, () => Array(cols).fill(false));
+  const parent = new Map();
+  const queue = [start];
+  visited[start.row][start.col] = true;
+
+  const dirs = [[1,0], [-1,0], [0,1], [0,-1]];
+
+  while (queue.length) {
+    const curr = queue.shift();
+    const { row, col } = curr;
+
+    if (!(row === start.row && col === start.col)) {
+      document.getElementById(`cell-${row}-${col}`).classList.add("visited");
+    }
+
+    queueDiv.innerHTML = `<b>🔍 Exploring:</b> (${row},${col}) | <b>Queue:</b> [${queue.map(q => `(${q.row},${q.col})`).join(", ")}]`;
+
+    if (row === end.row && col === end.col) {
+      await showPath(parent, end);
+      resultDiv.textContent = "🎉 Shortest Path Found!";
+      resultDiv.className = "success";
+      queueDiv.textContent = `✅ ${currentAlgorithm.toUpperCase()} Algorithm completed successfully!`;
+      return;
+    }
+
+    for (let [dx, dy] of dirs) {
+      const nr = row + dx, nc = col + dy;
+      if (
+        nr >= 0 && nr < rows && nc >= 0 && nc < cols &&
+        maze[nr][nc] === 0 && !visited[nr][nc]
+      ) {
+        visited[nr][nc] = true;
+        parent.set(`${nr},${nc}`, `${row},${col}`);
+        queue.push({ row: nr, col: nc });
       }
     }
+
+    await new Promise(res => setTimeout(res, animationSpeed));
   }
-  return {stop:false};
+
+  resultDiv.textContent = "❌ No Path Found!";
+  resultDiv.className = "error";
+  queueDiv.textContent = `🚫 ${currentAlgorithm.toUpperCase()} completed - no path exists between start and end.`;
 }
 
-function onPointerMove(e){
-  // Always track mouse position
-  currentMouseX = e.clientX;
-  currentMouseY = e.clientY;
-  
-  if(!running) return;
-  const cx=e.clientX, cy=e.clientY;
-  if(!lastPointer) lastPointer={x:cx,y:cy};
-  const res=samplePathAndProcess(lastPointer,cx,cy); lastPointer={x:cx,y:cy};
-  if(res.stop) lastPointer=null;
-}
+async function runDFS() {
+  if (!start || !end) {
+    resultDiv.textContent = "⚠️ Please select both Start and End points!";
+    resultDiv.className = "error";
+    return;
+  }
 
-// Level management functions
-function updateLevelInfo() {
-  if (levelInfoEl) {
-    const info = LevelManager.getLevelInfo();
-    if (info.level) {
-      levelInfoEl.textContent = `${info.difficulty.toUpperCase()} ${info.levelNumber}/${info.totalLevels}: ${info.level.name}`;
+  // Reset previous results
+  resultDiv.textContent = "";
+  resultDiv.className = "";
+
+  const visited = Array.from({ length: rows }, () => Array(cols).fill(false));
+  const parent = new Map();
+  const stack = [start];
+  visited[start.row][start.col] = true;
+
+  const dirs = [[1,0], [-1,0], [0,1], [0,-1]];
+
+  while (stack.length) {
+    const curr = stack.pop(); // DFS uses stack (LIFO)
+    const { row, col } = curr;
+
+    if (!(row === start.row && col === start.col)) {
+      document.getElementById(`cell-${row}-${col}`).classList.add("visited");
     }
-  }
-  
-  // Update navigation buttons
-  if (nextLevelBtn) {
-    nextLevelBtn.disabled = !LevelManager.getNextLevel();
-  }
-  
-  if (prevLevelBtn) {
-    const canGoPrev = LevelManager.currentLevelIndex > 0 || 
-                     LevelManager.getDifficulties().indexOf(LevelManager.currentDifficulty) > 0;
-    prevLevelBtn.disabled = !canGoPrev;
-  }
-}
 
-function nextLevel() {
-  if (LevelManager.advanceToNextLevel()) {
-    buildMaze();
-  }
-}
+    queueDiv.innerHTML = `<b>🌊 Exploring:</b> (${row},${col}) | <b>Stack:</b> [${stack.map(s => `(${s.row},${s.col})`).join(", ")}]`;
 
-function prevLevel() {
-  const difficulties = LevelManager.getDifficulties();
-  const currentDiffIndex = difficulties.indexOf(LevelManager.currentDifficulty);
-  
-  if (LevelManager.currentLevelIndex > 0) {
-    LevelManager.currentLevelIndex--;
-  } else if (currentDiffIndex > 0) {
-    const prevDifficulty = difficulties[currentDiffIndex - 1];
-    const prevLevels = LevelManager.getLevelsForDifficulty(prevDifficulty);
-    LevelManager.setCurrentLevel(prevDifficulty, prevLevels.length - 1);
-  }
-  
-  buildMaze();
-}
+    if (row === end.row && col === end.col) {
+      await showPath(parent, end);
+      resultDiv.textContent = "🎉 Path Found with DFS!";
+      resultDiv.className = "success";
+      queueDiv.textContent = "✅ DFS Algorithm completed successfully!";
+      return;
+    }
 
-function toggleGameMode() {
-  gameMode = gameMode === 'classic' ? 'progression' : 'classic';
-  
-  if (gameMode === 'progression') {
-    // Initialize level manager
-    LevelManager.setCurrentLevel('easy', 0);
-  }
-  
-  buildMaze();
-  updateModeUI();
-}
-
-function updateModeUI() {
-  const modeToggle = document.getElementById('modeToggle');
-  const levelControls = document.getElementById('levelControls');
-  const classicControls = document.getElementById('classicControls');
-  
-  if (modeToggle) {
-    modeToggle.textContent = gameMode === 'classic' ? 'Level Mode' : 'Classic Mode';
-  }
-  
-  if (levelControls) {
-    levelControls.style.display = gameMode === 'progression' ? 'flex' : 'none';
-  }
-  
-  if (classicControls) {
-    classicControls.style.display = gameMode === 'classic' ? 'flex' : 'none';
-  }
-}
-
-window.addEventListener('keydown',e=>{ if(e.code==='Space'){ e.preventDefault(); if(!running) startGame();}});
-document.addEventListener('mousemove',onPointerMove);
-document.addEventListener('touchmove',ev=>{ 
-  ev.preventDefault(); 
-  const t=ev.touches[0]; 
-  if(t) {
-    // Update mouse position for touch
-    currentMouseX = t.clientX;
-    currentMouseY = t.clientY;
-    if(running) onPointerMove(t);
-  }
-},{passive:false});
-resetBtn.addEventListener('click',()=>buildMaze(layoutSelect.value));
-layoutSelect.addEventListener('change',()=>buildMaze(layoutSelect.value));
-window.addEventListener('blur',()=>{ if(running) endGame(false); });
-messageEl.addEventListener('click',()=>{ resetState(); hideMessage(); });
-document.addEventListener('keydown', e=>{ if(e.key==='r'||e.key==='R') buildMaze(layoutSelect.value); });
-
-// Add event listeners for new level controls
-if (nextLevelBtn) {
-  nextLevelBtn.addEventListener('click', nextLevel);
-}
-
-if (prevLevelBtn) {
-  prevLevelBtn.addEventListener('click', prevLevel);
-}
-
-const modeToggle = document.getElementById('modeToggle');
-if (modeToggle) {
-  modeToggle.addEventListener('click', toggleGameMode);
-}
-
-const resetBtn2 = document.getElementById('resetBtn2');
-if (resetBtn2) {
-  resetBtn2.addEventListener('click', () => buildMaze());
-}
-
-// Enhanced win condition for progression mode
-const originalEndGame = endGame;
-function endGameWithProgression(win) {
-  if (win && gameMode === 'progression') {
-    setTimeout(() => {
-      if (LevelManager.getNextLevel()) {
-        // Auto-advance to next level after a delay
-        setTimeout(() => {
-          LevelManager.advanceToNextLevel();
-          buildMaze();
-        }, 2000);
+    for (let [dx, dy] of dirs) {
+      const nr = row + dx, nc = col + dy;
+      if (
+        nr >= 0 && nr < rows && nc >= 0 && nc < cols &&
+        maze[nr][nc] === 0 && !visited[nr][nc]
+      ) {
+        visited[nr][nc] = true;
+        parent.set(`${nr},${nc}`, `${row},${col}`);
+        stack.push({ row: nr, col: nc });
       }
-    }, 1200);
+    }
+
+    await new Promise(res => setTimeout(res, animationSpeed));
   }
-  originalEndGame(win);
+
+  resultDiv.textContent = "❌ No Path Found!";
+  resultDiv.className = "error";
+  queueDiv.textContent = "🚫 DFS completed - no path exists between start and end.";
 }
 
-// Replace the endGame function
-endGame = endGameWithProgression;
+async function showPath(parent, end, totalCost = null) {
+  let path = [];
+  let curr = `${end.row},${end.col}`;
 
-// Initialize the game
-buildMaze(layoutSelect.value);
-updateModeUI();
+  while (parent.has(curr)) {
+    const [r, c] = curr.split(',').map(Number);
+    path.push({ row: r, col: c });
+    curr = parent.get(curr);
+  }
+  path.reverse();
+
+  for (let cell of path) {
+    const el = document.getElementById(`cell-${cell.row}-${cell.col}`);
+    el.classList.add("path");
+    await new Promise(res => setTimeout(res, 100));
+  }
+
+  // Display total cost if provided
+  if (totalCost !== null && currentGraphType === "weighted") {
+    resultDiv.innerHTML = `🎉 Path Found! Total Cost: <strong>${totalCost}</strong>`;
+  }
+}
+
+async function runDijkstra() {
+  if (!start || !end) {
+    resultDiv.textContent = "⚠️ Please select both Start and End points!";
+    resultDiv.className = "error";
+    return;
+  }
+
+  // Reset previous results
+  resultDiv.textContent = "";
+  resultDiv.className = "";
+
+  const distances = Array.from({ length: rows }, () => Array(cols).fill(Infinity));
+  const visited = Array.from({ length: rows }, () => Array(cols).fill(false));
+  const parent = new Map();
+  
+  // Priority queue: [distance, row, col]
+  const pq = [[0, start.row, start.col]];
+  distances[start.row][start.col] = 0;
+
+  const dirs = [[1,0], [-1,0], [0,1], [0,-1]];
+
+  while (pq.length > 0) {
+    // Sort to get minimum distance (simple priority queue)
+    pq.sort((a, b) => a[0] - b[0]);
+    const [currentDist, row, col] = pq.shift();
+
+    if (visited[row][col]) continue;
+    visited[row][col] = true;
+
+    if (!(row === start.row && col === start.col)) {
+      document.getElementById(`cell-${row}-${col}`).classList.add("visited");
+    }
+
+    queueDiv.innerHTML = `<b>🔍 Dijkstra Exploring:</b> (${row},${col}) | <b>Distance:</b> ${currentDist} | <b>Queue Size:</b> ${pq.length}`;
+
+    if (row === end.row && col === end.col) {
+      await showPath(parent, end, currentDist);
+      resultDiv.className = "success";
+      queueDiv.textContent = `✅ Dijkstra completed! Shortest path cost: ${currentDist}`;
+      return;
+    }
+
+    for (let [dx, dy] of dirs) {
+      const nr = row + dx, nc = col + dy;
+      if (
+        nr >= 0 && nr < rows && nc >= 0 && nc < cols &&
+        maze[nr][nc] === 0 && !visited[nr][nc]
+      ) {
+        const weight = getCellWeight(nr, nc);
+        const newDist = currentDist + weight;
+        
+        if (newDist < distances[nr][nc]) {
+          distances[nr][nc] = newDist;
+          parent.set(`${nr},${nc}`, `${row},${col}`);
+          pq.push([newDist, nr, nc]);
+        }
+      }
+    }
+
+    await new Promise(res => setTimeout(res, animationSpeed));
+  }
+
+  resultDiv.textContent = "❌ No Path Found!";
+  resultDiv.className = "error";
+  queueDiv.textContent = "🚫 Dijkstra completed - no path exists between start and end.";
+}
+
+async function runWeightedDFS() {
+  if (!start || !end) {
+    resultDiv.textContent = "⚠️ Please select both Start and End points!";
+    resultDiv.className = "error";
+    return;
+  }
+
+  // Reset previous results
+  resultDiv.textContent = "";
+  resultDiv.className = "";
+
+  const visited = Array.from({ length: rows }, () => Array(cols).fill(false));
+  const parent = new Map();
+  const costs = new Map();
+  
+  // Stack: [row, col, currentCost]
+  const stack = [[start.row, start.col, 0]];
+  visited[start.row][start.col] = true;
+  costs.set(`${start.row},${start.col}`, 0);
+
+  const dirs = [[1,0], [-1,0], [0,1], [0,-1]];
+  let pathFound = false;
+  let finalCost = 0;
+
+  while (stack.length && !pathFound) {
+    const [row, col, currentCost] = stack.pop();
+
+    if (!(row === start.row && col === start.col)) {
+      document.getElementById(`cell-${row}-${col}`).classList.add("visited");
+    }
+
+    queueDiv.innerHTML = `<b>🌊 Weighted DFS:</b> (${row},${col}) | <b>Cost:</b> ${currentCost} | <b>Stack Size:</b> ${stack.length}`;
+
+    if (row === end.row && col === end.col) {
+      finalCost = currentCost;
+      pathFound = true;
+      await showPath(parent, end, finalCost);
+      resultDiv.className = "success";
+      queueDiv.textContent = `✅ Weighted DFS completed! Path cost: ${finalCost}`;
+      return;
+    }
+
+    for (let [dx, dy] of dirs) {
+      const nr = row + dx, nc = col + dy;
+      if (
+        nr >= 0 && nr < rows && nc >= 0 && nc < cols &&
+        maze[nr][nc] === 0 && !visited[nr][nc]
+      ) {
+        const weight = getCellWeight(nr, nc);
+        const newCost = currentCost + weight;
+        
+        visited[nr][nc] = true;
+        parent.set(`${nr},${nc}`, `${row},${col}`);
+        costs.set(`${nr},${nc}`, newCost);
+        stack.push([nr, nc, newCost]);
+      }
+    }
+
+    await new Promise(res => setTimeout(res, animationSpeed));
+  }
+
+  if (!pathFound) {
+    resultDiv.textContent = "❌ No Path Found!";
+    resultDiv.className = "error";
+    queueDiv.textContent = "🚫 Weighted DFS completed - no path exists between start and end.";
+  }
+}
+
+function resetGrid() {
+  document.querySelectorAll(".cell").forEach(c => {
+    c.className = "cell";
+    c.style.background = "";
+    c.style.opacity = "";
+    delete c.dataset.weight;
+  });
+  start = null;
+  end = null;
+  resultDiv.textContent = "";
+  mode="";
+  resultDiv.className = "";
+  queueDiv.textContent = "Grid reset! Ready for a new pathfinding visualization.";
+  if (maze.length > 0) {
+    maze = Array.from({ length: rows }, () => Array(cols).fill(0));
+    updateGridDisplay();
+  }
+}
