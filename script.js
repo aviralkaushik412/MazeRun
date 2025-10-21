@@ -14,25 +14,21 @@ const sidebar = document.getElementById("sidebar");
 const mainContent = document.getElementById("mainContent");
 const navbarToggle = document.getElementById("navbarToggle");
 
-// Event Listeners
 document.getElementById("createGrid").onclick = createGrid;
 document.getElementById("setStart").onclick = () => (mode = "start");
 document.getElementById("setEnd").onclick = () => (mode = "end");
 document.getElementById("runAlgorithm").onclick = runSelectedAlgorithm;
 document.getElementById("reset").onclick = resetGrid;
 
-// Sidebar toggle for mobile
 navbarToggle.onclick = toggleSidebar;
 
-// Algorithm selection
-document.querySelectorAll('input[name="algorithm"]').forEach(radio => {
+document.querySelectorAll('input[name="algorithm"]').forEach(radio => { 
   radio.addEventListener('change', (e) => {
     currentAlgorithm = e.target.value;
     updateAlgorithmTitle();
   });
 });
 
-// Graph type selection
 document.querySelectorAll('input[name="graphType"]').forEach(radio => {
   radio.addEventListener('change', (e) => {
     currentGraphType = e.target.value;
@@ -41,12 +37,10 @@ document.querySelectorAll('input[name="graphType"]').forEach(radio => {
   });
 });
 
-// Speed control
 document.getElementById("speedSlider").addEventListener('input', (e) => {
   animationSpeed = parseInt(e.target.value);
 });
 
-// Randomize weights button
 document.getElementById("randomizeWeights").addEventListener('click', randomizeWeights);
 
 function toggleWeightControls() {
@@ -65,10 +59,9 @@ function randomizeWeights() {
   }
 
   document.querySelectorAll('.cell:not(.wall):not(.start):not(.end)').forEach(cell => {
-    const weight = Math.floor(Math.random() * 5) + 1; // Weights 1-5
+    const weight = Math.floor(Math.random() * 5) + 1;
     cell.dataset.weight = weight;
     cell.classList.add('weighted');
-    // Remove any background styling that interferes with path colors
     cell.style.background = '';
     cell.style.opacity = '';
   });
@@ -90,19 +83,15 @@ function updateAlgorithmTitle() {
 }
 
 function updateGridDisplay() {
-  // Update grid display based on graph type
   if (currentGraphType === "weighted" && maze.length > 0) {
-    // Add weight indicators for weighted graphs
     document.querySelectorAll('.cell:not(.wall):not(.start):not(.end)').forEach(cell => {
       if (!cell.dataset.weight) {
         const weight = Math.floor(Math.random() * 5) + 1;
         cell.dataset.weight = weight;
         cell.classList.add('weighted');
-        // Don't add background colors that interfere with path visualization
       }
     });
   } else {
-    // Remove weight indicators for unweighted graphs
     document.querySelectorAll('.cell').forEach(cell => {
       delete cell.dataset.weight;
       cell.style.background = '';
@@ -122,7 +111,7 @@ function getCellWeight(row, col) {
 function runSelectedAlgorithm() {
   if (currentGraphType === "weighted") {
     if (currentAlgorithm === "bfs") {
-      runDijkstra(); // Use Dijkstra for weighted graphs instead of BFS
+      runDijkstra();
     } else if (currentAlgorithm === "dfs") {
       runWeightedDFS();
     }
@@ -143,7 +132,8 @@ function createGrid() {
   queueDiv.textContent = "Grid created! Click to add walls, or set start/end points.";
 
   const size = parseInt(prompt("Enter grid size (e.g. 15 for 15x15):"));
-  if (isNaN(size) || size <= 0) return alert("Enter a valid number!");
+  if (isNaN(size) || size <= 0 || size>=51) return alert("Enter a valid number between 0-50 only!");
+  // if(size>=50)
 
   rows = cols = size;
   maze = Array.from({ length: rows }, () => Array(cols).fill(0));
@@ -189,7 +179,6 @@ async function runBFS() {
     return;
   }
 
-  // Reset previous results
   resultDiv.textContent = "";
   resultDiv.className = "";
 
@@ -238,6 +227,7 @@ async function runBFS() {
   queueDiv.textContent = `🚫 ${currentAlgorithm.toUpperCase()} completed - no path exists between start and end.`;
 }
 
+
 async function runDFS() {
   if (!start || !end) {
     resultDiv.textContent = "⚠️ Please select both Start and End points!";
@@ -245,54 +235,65 @@ async function runDFS() {
     return;
   }
 
-  // Reset previous results
   resultDiv.textContent = "";
   resultDiv.className = "";
+  queueDiv.textContent = "";
 
   const visited = Array.from({ length: rows }, () => Array(cols).fill(false));
   const parent = new Map();
-  const stack = [start];
-  visited[start.row][start.col] = true;
 
-  const dirs = [[1,0], [-1,0], [0,1], [0,-1]];
+  const dirs = [[0,1], [1,0], [0,-1], [-1,0]];
+  let dirIndex = 0;
+  let found = false;
 
-  while (stack.length) {
-    const curr = stack.pop(); // DFS uses stack (LIFO)
-    const { row, col } = curr;
+  async function dfs(row, col) {
+    if (found) return;
+    visited[row][col] = true;
 
     if (!(row === start.row && col === start.col)) {
       document.getElementById(`cell-${row}-${col}`).classList.add("visited");
     }
 
-    queueDiv.innerHTML = `<b>🌊 Exploring:</b> (${row},${col}) | <b>Stack:</b> [${stack.map(s => `(${s.row},${s.col})`).join(", ")}]`;
+    queueDiv.innerHTML = `<b>🧩 Exploring:</b> (${row},${col})`;
 
     if (row === end.row && col === end.col) {
+      found = true;
       await showPath(parent, end);
-      resultDiv.textContent = "🎉 Path Found with DFS!";
+      resultDiv.textContent = "🎉 Path Found using DFS!";
       resultDiv.className = "success";
-      queueDiv.textContent = "✅ DFS Algorithm completed successfully!";
+      queueDiv.textContent = "✅ DFS completed successfully!";
       return;
     }
 
-    for (let [dx, dy] of dirs) {
+    for (let k = 0; k < 4; k++) {
+      const [dx, dy] = dirs[(dirIndex + k) % 4];
       const nr = row + dx, nc = col + dy;
+
       if (
         nr >= 0 && nr < rows && nc >= 0 && nc < cols &&
         maze[nr][nc] === 0 && !visited[nr][nc]
       ) {
-        visited[nr][nc] = true;
         parent.set(`${nr},${nc}`, `${row},${col}`);
-        stack.push({ row: nr, col: nc });
+        await new Promise(res => setTimeout(res, animationSpeed));
+        await dfs(nr, nc);
       }
     }
 
-    await new Promise(res => setTimeout(res, animationSpeed));
+    dirIndex = (dirIndex + 1) % 4;
   }
 
-  resultDiv.textContent = "❌ No Path Found!";
-  resultDiv.className = "error";
-  queueDiv.textContent = "🚫 DFS completed - no path exists between start and end.";
+  await dfs(start.row, start.col);
+
+  if (!found) {
+    resultDiv.textContent = "❌ No Path Found!";
+    resultDiv.className = "error";
+    queueDiv.textContent = "🚫 DFS completed - no path exists between start and end.";
+  }
 }
+
+
+
+
 
 async function showPath(parent, end, totalCost = null) {
   let path = [];
@@ -311,7 +312,6 @@ async function showPath(parent, end, totalCost = null) {
     await new Promise(res => setTimeout(res, 100));
   }
 
-  // Display total cost if provided
   if (totalCost !== null && currentGraphType === "weighted") {
     resultDiv.innerHTML = `🎉 Path Found! Total Cost: <strong>${totalCost}</strong>`;
   }
@@ -324,7 +324,6 @@ async function runDijkstra() {
     return;
   }
 
-  // Reset previous results
   resultDiv.textContent = "";
   resultDiv.className = "";
 
@@ -332,14 +331,12 @@ async function runDijkstra() {
   const visited = Array.from({ length: rows }, () => Array(cols).fill(false));
   const parent = new Map();
   
-  // Priority queue: [distance, row, col]
   const pq = [[0, start.row, start.col]];
   distances[start.row][start.col] = 0;
 
   const dirs = [[1,0], [-1,0], [0,1], [0,-1]];
 
   while (pq.length > 0) {
-    // Sort to get minimum distance (simple priority queue)
     pq.sort((a, b) => a[0] - b[0]);
     const [currentDist, row, col] = pq.shift();
 
@@ -391,7 +388,6 @@ async function runWeightedDFS() {
     return;
   }
 
-  // Reset previous results
   resultDiv.textContent = "";
   resultDiv.className = "";
 
@@ -399,7 +395,6 @@ async function runWeightedDFS() {
   const parent = new Map();
   const costs = new Map();
   
-  // Stack: [row, col, currentCost]
   const stack = [[start.row, start.col, 0]];
   visited[start.row][start.col] = true;
   costs.set(`${start.row},${start.col}`, 0);
