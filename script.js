@@ -66,7 +66,7 @@ function randomizeWeights() {
     cell.style.opacity = '';
   });
 
-  queueDiv.textContent = "🎲 Weights randomized! Numbers show cell costs (1=lowest, 5=highest).";
+  queueDiv.textContent = "Weights randomized! Numbers show cell costs (1=lowest, 5=highest).";
 }
 
 function toggleSidebar() {
@@ -76,8 +76,8 @@ function toggleSidebar() {
 
 function updateAlgorithmTitle() {
   const algorithmNames = {
-    bfs: "🔍 BFS Pathfinding Visualizer",
-    dfs: "🌊 DFS Pathfinding Visualizer"
+    bfs: "BFS Pathfinding Visualizer",
+    dfs: "DFS Pathfinding Visualizer"
   };
   algorithmTitle.textContent = algorithmNames[currentAlgorithm];
 }
@@ -174,7 +174,7 @@ function handleCellClick(r, c) {
 
 async function runBFS() {
   if (!start || !end) {
-    resultDiv.textContent = "⚠️ Please select both Start and End points!";
+    resultDiv.textContent = "Please select both Start and End points!";
     resultDiv.className = "error";
     return;
   }
@@ -197,13 +197,13 @@ async function runBFS() {
       document.getElementById(`cell-${row}-${col}`).classList.add("visited");
     }
 
-    queueDiv.innerHTML = `<b>🔍 Exploring:</b> (${row},${col}) | <b>Queue:</b> [${queue.map(q => `(${q.row},${q.col})`).join(", ")}]`;
+    queueDiv.innerHTML = `<b>Exploring:</b> (${row},${col}) | <b>Queue:</b> [${queue.map(q => `(${q.row},${q.col})`).join(", ")}]`;
 
     if (row === end.row && col === end.col) {
       await showPath(parent, end);
-      resultDiv.textContent = "🎉 Shortest Path Found!";
+      resultDiv.textContent = "Shortest Path Found!";
       resultDiv.className = "success";
-      queueDiv.textContent = `✅ ${currentAlgorithm.toUpperCase()} Algorithm completed successfully!`;
+      queueDiv.textContent = `${currentAlgorithm.toUpperCase()} Algorithm completed successfully!`;
       return;
     }
 
@@ -222,15 +222,15 @@ async function runBFS() {
     await new Promise(res => setTimeout(res, animationSpeed));
   }
 
-  resultDiv.textContent = "❌ No Path Found!";
+  resultDiv.textContent = "No Path Found!";
   resultDiv.className = "error";
-  queueDiv.textContent = `🚫 ${currentAlgorithm.toUpperCase()} completed - no path exists between start and end.`;
+  queueDiv.textContent = `${currentAlgorithm.toUpperCase()} completed - no path exists between start and end.`;
 }
 
 
 async function runDFS() {
   if (!start || !end) {
-    resultDiv.textContent = "⚠️ Please select both Start and End points!";
+    resultDiv.textContent = "Please select both Start and End points!";
     resultDiv.className = "error";
     return;
   }
@@ -254,14 +254,14 @@ async function runDFS() {
       document.getElementById(`cell-${row}-${col}`).classList.add("visited");
     }
 
-    queueDiv.innerHTML = `<b>🧩 Exploring:</b> (${row},${col})`;
+    queueDiv.innerHTML = `<b>Exploring:</b> (${row},${col})`;
 
     if (row === end.row && col === end.col) {
       found = true;
       await showPath(parent, end);
-      resultDiv.textContent = "🎉 Path Found using DFS!";
+      resultDiv.textContent = "Path Found using DFS!";
       resultDiv.className = "success";
-      queueDiv.textContent = "✅ DFS completed successfully!";
+      queueDiv.textContent = "DFS completed successfully!";
       return;
     }
 
@@ -285,9 +285,9 @@ async function runDFS() {
   await dfs(start.row, start.col);
 
   if (!found) {
-    resultDiv.textContent = "❌ No Path Found!";
+    resultDiv.textContent = "No Path Found!";
     resultDiv.className = "error";
-    queueDiv.textContent = "🚫 DFS completed - no path exists between start and end.";
+    queueDiv.textContent = "DFS completed - no path exists between start and end.";
   }
 }
 
@@ -313,13 +313,13 @@ async function showPath(parent, end, totalCost = null) {
   }
 
   if (totalCost !== null && currentGraphType === "weighted") {
-    resultDiv.innerHTML = `🎉 Path Found! Total Cost: <strong>${totalCost}</strong>`;
+    resultDiv.innerHTML = `Path Found! Total Cost: <strong>${totalCost}</strong>`;
   }
 }
 
 async function runDijkstra() {
   if (!start || !end) {
-    resultDiv.textContent = "⚠️ Please select both Start and End points!";
+    resultDiv.textContent = "Please select both Start and End points!";
     resultDiv.className = "error";
     return;
   }
@@ -347,12 +347,12 @@ async function runDijkstra() {
       document.getElementById(`cell-${row}-${col}`).classList.add("visited");
     }
 
-    queueDiv.innerHTML = `<b>🔍 Dijkstra Exploring:</b> (${row},${col}) | <b>Distance:</b> ${currentDist} | <b>Queue Size:</b> ${pq.length}`;
+    queueDiv.innerHTML = `<b>Dijkstra Exploring:</b> (${row},${col}) | <b>Distance:</b> ${currentDist} | <b>Queue Size:</b> ${pq.length}`;
 
     if (row === end.row && col === end.col) {
       await showPath(parent, end, currentDist);
       resultDiv.className = "success";
-      queueDiv.textContent = `✅ Dijkstra completed! Shortest path cost: ${currentDist}`;
+      queueDiv.textContent = `Dijkstra completed! Shortest path cost: ${currentDist}`;
       return;
     }
 
@@ -376,14 +376,14 @@ async function runDijkstra() {
     await new Promise(res => setTimeout(res, animationSpeed));
   }
 
-  resultDiv.textContent = "❌ No Path Found!";
+  resultDiv.textContent = "No Path Found!";
   resultDiv.className = "error";
-  queueDiv.textContent = "🚫 Dijkstra completed - no path exists between start and end.";
+  queueDiv.textContent = "Dijkstra completed - no path exists between start and end.";
 }
 
 async function runWeightedDFS() {
   if (!start || !end) {
-    resultDiv.textContent = "⚠️ Please select both Start and End points!";
+    resultDiv.textContent = "Please select both Start and End points!";
     resultDiv.className = "error";
     return;
   }
@@ -410,14 +410,14 @@ async function runWeightedDFS() {
       document.getElementById(`cell-${row}-${col}`).classList.add("visited");
     }
 
-    queueDiv.innerHTML = `<b>🌊 Weighted DFS:</b> (${row},${col}) | <b>Cost:</b> ${currentCost} | <b>Stack Size:</b> ${stack.length}`;
+    queueDiv.innerHTML = `<b>Weighted DFS:</b> (${row},${col}) | <b>Cost:</b> ${currentCost} | <b>Stack Size:</b> ${stack.length}`;
 
     if (row === end.row && col === end.col) {
       finalCost = currentCost;
       pathFound = true;
       await showPath(parent, end, finalCost);
       resultDiv.className = "success";
-      queueDiv.textContent = `✅ Weighted DFS completed! Path cost: ${finalCost}`;
+      queueDiv.textContent = `Weighted DFS completed! Path cost: ${finalCost}`;
       return;
     }
 
@@ -441,9 +441,9 @@ async function runWeightedDFS() {
   }
 
   if (!pathFound) {
-    resultDiv.textContent = "❌ No Path Found!";
+    resultDiv.textContent = "No Path Found!";
     resultDiv.className = "error";
-    queueDiv.textContent = "🚫 Weighted DFS completed - no path exists between start and end.";
+    queueDiv.textContent = "Weighted DFS completed - no path exists between start and end.";
   }
 }
 
