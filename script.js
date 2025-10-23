@@ -259,7 +259,7 @@ async function runDFS() {
     if (row === end.row && col === end.col) {
       found = true;
       await showPath(parent, end);
-      resultDiv.textContent = "Path Found using DFS!";
+      resultDiv.textContent = "Path Found using DFS";
       resultDiv.className = "success";
       queueDiv.textContent = "DFS completed successfully!";
       return;
